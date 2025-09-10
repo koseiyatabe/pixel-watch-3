@@ -1,0 +1,43 @@
+concurrency:
+  group: monitor-schedule
+  cancel-in-progress: false
+  
+name: Monitor Pixel Watch Page
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # 5分おき（UTC）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # .state/ の更新をコミットするため
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          TARGET_URL: https://www.softbank.jp/mobile/products/google-pixel-watch/google-pixel-watch-3/
+          CSS_SELECTOR: ""
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          TO_EMAIL: ${{ secrets.TO_EMAIL }}
+        run: python monitor.py
+
+      - name: Persist state (.state/)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(state): update page hash"
+          file_pattern: ".state/*.hash"
